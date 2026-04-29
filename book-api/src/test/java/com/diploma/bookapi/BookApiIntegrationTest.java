@@ -52,13 +52,13 @@ class BookApiIntegrationTest {
     void createAndRetrieveBook() throws Exception {
         Book book = new Book("Clean Code", "Robert C. Martin", "9780132350884", "A handbook of agile software craftsmanship");
 
-        String location = mockMvc.perform(post("/api/books")
+        mockMvc.perform(post("/api/books")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(book)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.title").value("Clean Code"))
-                .andReturn().getResponse().getHeader("Location");
+                .andExpect(header().string("Location", containsString("/api/books/")));
 
         mockMvc.perform(get("/api/books"))
                 .andExpect(status().isOk())

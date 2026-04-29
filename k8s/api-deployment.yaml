@@ -17,7 +17,6 @@ spec:
     spec:
       containers:
         - name: book-api
-          # Replace <your-github-username> with your actual GitHub username
           image: ghcr.io/kiril-iliyanov-kirilov/book-api:latest
           imagePullPolicy: Always
           ports:
