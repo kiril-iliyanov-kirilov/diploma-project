@@ -7,6 +7,13 @@ metadata:
     app: book-api
 spec:
   replicas: 2
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: book-api
@@ -15,10 +22,11 @@ spec:
       labels:
         app: book-api
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: book-api
-          image: ghcr.io/kiril-iliyanov-kirilov/book-api:latest
-          imagePullPolicy: Always
+          image: ghcr.io/kiril-iliyanov-kirilov/book-api:actuator-fix-v2
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:
@@ -26,20 +34,48 @@ spec:
                 name: book-api-config
             - secretRef:
                 name: book-api-secret
+
+          # Optional but recommended explicit actuator env (overrides if needed)
+          env:
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,prometheus"
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+            - name: MANAGEMENT_HEALTH_LIVENESSSTATE_ENABLED
+              value: "true"
+            - name: MANAGEMENT_HEALTH_READINESSSTATE_ENABLED
+              value: "true"
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            # app start ~50-60s при теб, затова по-щадящо:
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 18
+            # общо ~200s толеранс (20 + 18*10)
+
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 20
+            initialDelaySeconds: 10
             periodSeconds: 10
-            failureThreshold: 3
+            timeoutSeconds: 3
+            failureThreshold: 6
+            successThreshold: 1
+
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 15
+            timeoutSeconds: 3
             failureThreshold: 3
+
           resources:
             requests:
               cpu: "100m"
